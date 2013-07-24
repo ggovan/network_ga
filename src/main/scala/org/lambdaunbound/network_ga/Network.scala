@@ -1,11 +1,13 @@
 package org.lambdaunbound.network_ga
 
-//type EdgeMap[N,E] = Map[N,Map[N.E]]
+object Network {
+  def create[N,E]():Network[N,E] = Network(Set(),Map(),Map())
+}
 
-case class Network[N,E](nodes:Set[N],edges:Map[N,Map[N,E]]){
+case class Network[N,E](nodes:Set[N],toEdges:Map[N,Map[N,E]],fromEdges:EdgeMap[N,E]){
   def addNode(node:N):Network[N,E] = {
     require(!nodes.contains(node))
-    Network(nodes+node,edges+((node,Map())))
+    Network(nodes+node,toEdges+((node,Map())),fromEdges+((node,Map())))
   }
 
   def addNodes(newNodes:List[N]):Network[N,E] = newNodes match {
@@ -14,49 +16,55 @@ case class Network[N,E](nodes:Set[N],edges:Map[N,Map[N,E]]){
   }
 
   def removeNode(node:N):Network[N,E] = {
+    def removeNodeFrom(edges:EdgeMap[N,E]):EdgeMap[N,E] = {
+      val tmpEdges = edges-node
+      tmpEdges.map{case (n,em) => if(em.contains(node)) (n,em-node) else (n,em)}
+    }
     require(contains(node))
     val newNodes = nodes-node
-    val tmpEdges = edges-node
-    val newEdges = tmpEdges.map{case (n,em) => if(em.contains(node)) (n,em-node) else (n,em)}
-    Network(newNodes,newEdges)
+    val newTo = removeNodeFrom(toEdges)
+    val newFrom = removeNodeFrom(fromEdges)
+    Network(newNodes,newTo,newFrom)
   }
 
   def addEdge(node1:N,node2:N,edge:E):Network[N,E] = {
     require(nodes.contains(node1))
     require(nodes.contains(node2))
-    val ne = edges(node1)
+    val ne = toEdges(node1)
     require(!ne.contains(node2))
-    Network(nodes,edges+((node1,ne+((node2,edge)))))
+    val newTo = toEdges+((node1,ne+((node2,edge))))
+    val newFrom = fromEdges+((node2,fromEdges(node2)+((node1,edge))))
+    Network(nodes,newTo,newFrom)
   }
 
   def getEdge(node1:N,node2:N):Option[E] = {
     require(nodes.contains(node1))
     require(nodes.contains(node2))
-    val ne = edges(node1)
+    val ne = toEdges(node1)
     ne.get(node2)
   }
 
   def removeEdge(node1:N,node2:N):Network[N,E] = {
     require(nodes.contains(node1))
     require(nodes.contains(node2))
-    val ne = edges(node1)
+    val ne = toEdges(node1)
     require(ne.contains(node2))
-    Network(nodes,edges+((node1,ne-(node2))))
+    val newTo = toEdges+((node1,ne-(node2)))
+    val newFrom = fromEdges+((node2,fromEdges(node2)-(node1)))
+
+    Network(nodes,newTo,newFrom)
   }
 
   def contains(node:N) = nodes.contains(node)
 
   def connectedTo(node:N):Set[N] = {
     require(contains(node))
-    edges(node).toList.map(_._1).toSet
+    toEdges(node).toList.map(_._1).toSet
   }
 
   def connectedFrom(node:N):Set[N] = {
     require(contains(node))
-    for{n<- nodes
-      if(n!=node)
-      if(getEdge(n,node)!=None)
-      }yield n
+    fromEdges(node).toList.map(_._1).toSet
   }
 
   def getNeighbours(node:N):Set[N] = {
@@ -64,7 +72,7 @@ case class Network[N,E](nodes:Set[N],edges:Map[N,Map[N,E]]){
   }
 
   lazy val numEdges:Int = {
-    edges.foldLeft(0)(_ + _._2.size)
+    toEdges.foldLeft(0)(_ + _._2.size)
   }
 }
 
@@ -72,14 +80,14 @@ object NetworkMeasures {
   
   def degreeDistribution[N,E](net:Network[N,E]):Map[Int,Double] = {
     require(net.nodes.size!=0)
-    val neighbours = net.nodes.groupBy(n=>net.edges(n).size)
+    val neighbours = net.nodes.groupBy(n=>net.toEdges(n).size)
     val nodesSize = net.nodes.size.toDouble
     neighbours.map{case (k,v) => (k,v.size/nodesSize)}
   }
 
   def averageDegree[N,E](net:Network[N,E]):Double = {
     require(net.nodes.size!=0)
-    net.nodes.foldLeft(0)((t,n)=>t+net.edges(n).size)/net.nodes.size.toDouble
+    net.numEdges/net.nodes.size.toDouble
   }
 
   def nodeClusteringCoefficient[N,E](net:Network[N,E],node:N):Double = {
@@ -138,7 +146,7 @@ object NetworkIO {
     using(new BufferedReader(reader)){br:BufferedReader =>
       var line = br.readLine()
       val size = line.length
-      var net = Network[Int,Int](Set(),Map())
+      var net = Network.create[Int,Int]()
       net = net.addNodes(0 until size toList)
       var row:Int = 0
       do{

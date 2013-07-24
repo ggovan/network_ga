@@ -3,10 +3,10 @@ package org.lambdaunbound.network_ga
 import org.scalatest.FunSpec
 
 class ExampleSpec extends FunSpec {
+  val empty = Network.create[Int,Int]
 
   describe("A Network") {
 
-    val empty = Network(Set[Int](),Map[Int,Map[Int,Int]]())
 
     it("should contain nodes") {
       var net = empty.addNode(0)
@@ -59,8 +59,8 @@ class ExampleSpec extends FunSpec {
       net = net.removeNode(2)
       assert(!net.contains(2))
       assert(net.getEdge(0,1)===Some(9))
-      assert(net.edges.size===2)
-      assert(net.edges(0).size===1)
+      assert(net.toEdges.size===2)
+      assert(net.toEdges(0).size===1)
     }
 
     it("should only remove existing nodes"){
@@ -98,7 +98,6 @@ class ExampleSpec extends FunSpec {
 
   describe("A Gene"){
     import java.util.Random
-    val empty = Network(Set[Int](),Map[Int,Map[Int,Int]]())
     it("should be able to be mutated to a new gene"){
       val rnd = new Random(0)
       val net = empty.addNodes(0 until 100 toList)
@@ -154,7 +153,6 @@ class ExampleSpec extends FunSpec {
   }
 
   describe("A DegreeDistribution"){
-    val empty = Network(Set[Int](),Map[Int,Map[Int,Int]]())
 
     it("should work for networks with no edges"){
       val dd = NetworkMeasures.degreeDistribution(empty.addNode(0))
@@ -186,7 +184,6 @@ class ExampleSpec extends FunSpec {
   }
 
   describe("An average degree"){
-    val empty = Network(Set[Int](),Map[Int,Map[Int,Int]]())
     it("should be correct"){
       var net = empty.addNodes((0 until 10).toList)
       net = net.addEdge(0,1,1)
@@ -212,7 +209,6 @@ class ExampleSpec extends FunSpec {
   }
 
   describe("An average clustering coefficient"){
-    val empty = Network(Set[Int](),Map[Int,Map[Int,Int]]())
     it("should not work for empty networks"){
       intercept[IllegalArgumentException]{
         NetworkMeasures.averageClusteringCoefficient(empty)
@@ -240,7 +236,6 @@ class ExampleSpec extends FunSpec {
   }
 
   describe("An average path length"){
-    val empty = Network(Set[Int](),Map[Int,Map[Int,Int]]())
     it("should work from a single node"){
       var net = empty.addNodes(List(0,1,2,3))
       net = net.addEdge(0,1,1)

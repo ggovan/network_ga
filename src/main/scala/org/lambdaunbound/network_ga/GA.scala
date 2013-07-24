@@ -2,7 +2,7 @@ package org.lambdaunbound.network_ga
 
 case class Objectives[G](obs:List[G=>Double]) {
     def apply(gene:G):ScoredGene[G] = ScoredGene(gene,obs.map(_(gene)),0)
-    def all(genes:List[G]):List[ScoredGene[G]] = genes.map(apply(_)).toList
+    def all(genes:List[G]):List[ScoredGene[G]] = genes.par.map(apply(_)).toList
     def &&(f:G=>Double):Objectives[G] = Objectives(obs++List(f))
 }
 

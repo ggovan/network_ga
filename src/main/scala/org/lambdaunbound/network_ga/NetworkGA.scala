@@ -58,12 +58,12 @@ object NetworkGA {
 
     val objs = Objectives(List(f1,f2,f3))
 
-    val rnd = new Random
+    val rnd = new Random(0)
     //val out = new BufferedWriter(new PrintWriter(output))
 
     //set up initial pop
 
-    val emptyNet:IntNet = Network(Set(),Map())
+    val emptyNet = Network.create[Int,Int]
     val startNet = emptyNet.addNodes(0 until nodes toList)
     val startMutRate = 0.01
     val tmpGene = Gene(startNet,startMutRate).mutate(rnd)
