@@ -31,7 +31,7 @@ case class Gene(net:Network[Int,Int],mutationRate:Double) extends Mutatable[Gene
     mutateNet(allNodes,net,rnd)
   }
 
-  def mutateRate(rnd:Random):Double = if(rnd.nextDouble()<mutationRate)rnd.nextDouble() else mutationRate
+  def mutateRate(rnd:Random):Double = if(rnd.nextDouble()<scala.math.sqrt(mutationRate))rnd.nextDouble() else mutationRate
 
 }
 
@@ -73,7 +73,7 @@ object NetworkGA {
     val pop = Population[Gene](objs.all((List(startGene))))
 
     def eogf(gen:Int,pop:Population[Gene]){
-      println("End of Generation " + (gen+1))
+      println("End of Generation " + (gen+1)+", Pop size " + pop.pop.length)
       val p = pop.pop.map(sg=>sg.doms+" "+sg.scores.mkString(" ")+" "+sg.gene.mutationRate).mkString("\n")
       println(p)
     }
@@ -90,7 +90,12 @@ object NetworkGA {
       if(gen==noGen) pop
       else {
         val genPop = pop.createPop(rnd).take(popSize).toList
-        val nextPop = pop.++(objs.all(genPop)).paretoOrdered.take(popSize)
+        val paretoOrdered = pop.++(objs.all(genPop)).paretoOrdered
+        val undominated = paretoOrdered.filter(_.doms==0)
+        val nextPop = if(undominated.length>popSize)
+            undominated
+          else
+            paretoOrdered.take(popSize)
         endOfGenFunction.map(_(gen,Population(nextPop)))
         generation(gen+1,Population(nextPop))
       }
