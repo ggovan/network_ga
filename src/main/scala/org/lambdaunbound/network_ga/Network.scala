@@ -113,7 +113,7 @@ object NetworkMeasures {
       case Nil => Nil
       case n::ns => {
         //TODO: is this connectedTo or neighbours
-        val neighbours = net.connectedTo(n._1)--visited
+        val neighbours = net.getNeighbours(n._1)--visited
         val nvis = visited++neighbours
         val pls = neighbours.map((_,n._2+1))
         val nqueue = ns++pls
