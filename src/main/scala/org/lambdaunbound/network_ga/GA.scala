@@ -31,6 +31,7 @@ trait Mutatable[G] {
 }
 
 case class Population[G<:Mutatable[G]](pop:List[ScoredGene[G]]){
+  import java.util.Random
 
   lazy val paretoOrdered:List[ScoredGene[G]] = {
     val domList = pop.map(_.clearDominated.countDominated(pop))
@@ -45,8 +46,24 @@ case class Population[G<:Mutatable[G]](pop:List[ScoredGene[G]]){
     paretoOrdered(next).gene
   }
 
+  lazy val dominanceTournametList:List[(Double,ScoredGene[G])] = {
+    val maxD = paretoOrdered.last.doms+1
+    val total = paretoOrdered.foldLeft(0)(_+maxD-_.doms).toDouble
+    paretoOrdered.map(sg=>((maxD-sg.doms)/total,sg))
+  }
+
+  def dominanceTournamentSelect(rnd:Random):G = {
+    def tselect(p:Double,l:List[(Double,ScoredGene[G])]):G = l match {
+      case Nil => throw new AssertionError("The % of all items is less than 1.")
+      case (q,g)::ls =>
+        if(p<q) g.gene
+        else tselect(p-q,ls)
+    }
+    tselect(rnd.nextDouble,dominanceTournametList)
+  }
+
   def createPop(rnd:java.util.Random):Stream[G] = {
-    val selected:G = select(rnd)
+    val selected:G = dominanceTournamentSelect(rnd)
     val g = selected.mutate(rnd)
     g#::createPop(rnd)
   }
