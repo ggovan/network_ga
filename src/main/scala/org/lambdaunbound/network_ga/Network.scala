@@ -86,6 +86,7 @@ case class Network[N,E](nodes:Set[N],toEdges:Map[N,Map[N,E]],fromEdges:EdgeMap[N
 }
 
 object NetworkMeasures {
+  import scala.collection.immutable.Queue
   
   def degreeDistribution[N,E](net:Network[N,E]):Map[Int,Double] = {
     require(net.nodes.size!=0)
@@ -120,14 +121,14 @@ object NetworkMeasures {
 
   def nodePathLength[N,E](net:Network[N,E],node:N):(Int,Int) = {
     require(net.contains(node))
-    def bfs(queue:List[(N,Int)],visited:Set[N]):List[(N,Int)] = queue match {
-      case Nil => Nil
-      case n::ns => {
+    def bfs(queue:Seq[(N,Int)],visited:Set[N]):Iterable[(N,Int)] = queue.headOption match {
+      case None => Nil
+      case Some(n) => {
         //TODO: is this connectedTo or neighbours
         val neighbours = net.getNeighbours(n._1)--visited
         val nvis = visited++neighbours
         val pls = neighbours.map((_,n._2+1))
-        val nqueue = ns++pls
+        val nqueue = queue.tail++pls
         if(visited.size==net.nodes.size)
           pls.toList
         else
