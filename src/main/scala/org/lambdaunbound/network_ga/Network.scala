@@ -95,6 +95,7 @@ object NetworkMeasures {
   }
 
   def averageDegree[N,E](net:Network[N,E]):Double = {
+    logger.debug("Calculating Average Degree")
     require(net.nodes.size!=0)
     net.numEdges/net.nodes.size.toDouble
   }
@@ -112,6 +113,7 @@ object NetworkMeasures {
   }
 
   def averageClusteringCoefficient[N,E](net:Network[N,E]):Double = {
+    logger.debug("Calculating Clustering Coefficient")
     require(net.nodes.size!=0)
     net.nodes.foldLeft(0.0)(_+nodeClusteringCoefficient(net,_))/net.nodes.size
   }
@@ -137,6 +139,7 @@ object NetworkMeasures {
   }
 
   def averagePathLength[N,E](net:Network[N,E]):Double = {
+    logger.debug("Calculating Path Length")
     val pls = net.nodes.foldLeft((0,0)){(running,node)=>
       val npl = nodePathLength(net,node)
       (running._1+npl._1,running._2+npl._2)
@@ -152,6 +155,7 @@ object NetworkIO {
   import java.io._
 
   def loadAdjacencyMatrix(reader:Reader):Network[Int,Int] = {
+    logger.debug("Loading in Adjacency Matrix")
     using(new BufferedReader(reader)){br:BufferedReader =>
       var line = br.readLine()
       val size = line.length

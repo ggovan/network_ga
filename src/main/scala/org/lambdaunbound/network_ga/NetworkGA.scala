@@ -6,6 +6,7 @@ case class Gene(net:Network[Int,Int],mutationRate:Double) extends Mutatable[Gene
   type IntNet = Network[Int,Int]
 
   def mutate(rnd:Random):Gene = {
+    logger.debug("Mutating Gene")
     val mutNet = mutateNetwork(rnd)
     val mutR = mutateRate(rnd)
     Gene(mutNet,mutR)
@@ -44,6 +45,7 @@ object NetworkGA {
 
   def main(args:Array[String]){
     //process input
+    logger.info("Starting Network_GA");
     val popSize = args(0).toInt
     val gens = args(1).toInt
     val output = args(2)
@@ -79,11 +81,13 @@ object NetworkGA {
     }
 
     //do the evo
+    logger.info("Starting evolution")
     val outPop = evo(gens,popSize,objs,rnd,pop,Some(eogf _))
 
     //output results
     eogf(gens-1,outPop)
 
+    logger.info("Writing out final population")
     using(out){out=>
       outPop.pop.map(_.gene.net.out(out))
     }
@@ -93,13 +97,16 @@ object NetworkGA {
     def generation(gen:Int,pop:Population[G]):Population[G] = {
       if(gen==noGen) pop
       else {
+        logger.debug("Evolving generation {}",gen+1);
         val genPop = pop.createPop(rnd).take(popSize).toList
+        logger.debug("Evaluating and sorting generation {}",gen+1);
         val paretoOrdered = pop.++(objs.all(genPop)).paretoOrdered
         val undominated = paretoOrdered.filter(_.doms==0)
         val nextPop = if(undominated.length>popSize)
             undominated
           else
             paretoOrdered.take(popSize)
+        logger.debug("Call end of gen function with generation {}",gen+1);
         endOfGenFunction.map(_(gen,Population(nextPop)))
         generation(gen+1,Population(nextPop))
       }
