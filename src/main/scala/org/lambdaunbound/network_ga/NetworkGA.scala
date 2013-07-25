@@ -36,6 +36,43 @@ case class Gene(net:Network[Int,Int],mutationRate:Double) extends Mutatable[Gene
 
 }
 
+case class MultiMutateNetworkGene(net:Network[Int,Int],mutRates:Seq[Double])extends Mutatable[MultiMutateNetworkGene]{
+  import java.util.Random
+  type IntNet = Network[Int,Int]
+
+  def mutate(rnd:Random):MultiMutateNetworkGene = {
+    logger.debug("Mutating MMNGene")
+    val mutNet = mutateNetwork(rnd)
+    val mutRs = mutateRates(rnd)
+    MultiMutateNetworkGene(mutNet,mutRs)
+  }
+
+  def mutateNetwork(rnd:Random):Network[Int,Int] = {
+    val allNodes = (0 until net.nodes.size).toList
+    val nodesAndMR = allNodes.zip(mutRates)
+
+    def mutateNet(nodes:List[(Int,Double)],net:IntNet,rnd:Random):IntNet = nodes match{
+      case Nil => net
+      case (node,mRate)::ns => mutateNet(ns,mutateNode(allNodes,node,mRate,net,rnd),rnd)
+    }
+
+    def mutateNode(nodes:List[Int],node:Int,mRate:Double,net:IntNet,rnd:Random):IntNet = nodes match {
+      case Nil => net
+      case n::ns if(n==node) => mutateNode(ns,node,mRate,net,rnd)
+      case n::ns if(rnd.nextDouble()<mRate) => {
+        val newNet = if(net.getEdge(node,n)==None)net.addEdge(node,n,1) else net.removeEdge(node,n)
+        mutateNode(ns,node,mRate,newNet,rnd)
+      }
+
+      case n::ns => mutateNode(ns,node,mRate,net,rnd)
+    }
+
+    mutateNet(nodesAndMR,net,rnd)
+  }
+
+  def mutateRates(rnd:Random):Seq[Double] = mutRates.map(mr=>if(rnd.nextDouble()<scala.math.sqrt(mr))rnd.nextDouble() else mr)
+}
+
 
 object NetworkGA {
   type IntNet = Network[Int,Int]

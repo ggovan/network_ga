@@ -76,13 +76,15 @@ case class Network[N,E](nodes:Set[N],toEdges:Map[N,Map[N,E]],fromEdges:EdgeMap[N
   }
 
   def out(out:java.io.PrintWriter){
-    val nl = nodes.toList
+    val nl = nodesList
     nl.map{n=>
       out.print(n+" ")
       out.println(toEdges(n).map(_._1).mkString(" "))
     }
     out.println("End network")
   }
+
+  lazy val nodesList = nodes.toList
 }
 
 object NetworkMeasures {
@@ -124,7 +126,6 @@ object NetworkMeasures {
     def bfs(queue:Seq[(N,Int)],visited:Set[N]):Iterable[(N,Int)] = queue.headOption match {
       case None => Nil
       case Some(n) => {
-        //TODO: is this connectedTo or neighbours
         val neighbours = net.getNeighbours(n._1)--visited
         val nvis = visited++neighbours
         val pls = neighbours.map((_,n._2+1))
@@ -141,8 +142,8 @@ object NetworkMeasures {
 
   def averagePathLength[N,E](net:Network[N,E]):Double = {
     logger.debug("Calculating Path Length")
-    val pls = net.nodes.foldLeft((0,0)){(running,node)=>
-      val npl = nodePathLength(net,node)
+    val npls = net.nodesList.par.map(nodePathLength(net,_))
+    val pls = npls.foldLeft((0,0)){(running,npl)=>
       (running._1+npl._1,running._2+npl._2)
     }
     if(pls._2==0)
