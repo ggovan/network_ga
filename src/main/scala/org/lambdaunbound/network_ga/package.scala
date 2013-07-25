@@ -2,6 +2,8 @@ package org.lambdaunbound
 
 package object network_ga {
 
+  lazy val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
+
   def ???():Nothing = throw new Exception
 
   type EdgeMap[N,E] = Map[N,Map[N,E]]
