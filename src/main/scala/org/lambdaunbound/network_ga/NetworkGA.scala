@@ -59,7 +59,7 @@ object NetworkGA {
     val objs = Objectives(List(f1,f2,f3))
 
     val rnd = new Random(0)
-    //val out = new BufferedWriter(new PrintWriter(output))
+    val out = new PrintWriter(output)
 
     //set up initial pop
 
@@ -83,6 +83,10 @@ object NetworkGA {
 
     //output results
     eogf(gens-1,outPop)
+
+    using(out){out=>
+      outPop.pop.map(_.gene.net.out(out))
+    }
   }
 
   def evo[G<:Mutatable[G]](noGen:Int,popSize:Int,objs:Objectives[G],rnd:Random,startPop:Population[G],endOfGenFunction:Option[(Int,Population[G])=>Unit]=None):Population[G] = {

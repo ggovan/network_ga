@@ -74,6 +74,15 @@ case class Network[N,E](nodes:Set[N],toEdges:Map[N,Map[N,E]],fromEdges:EdgeMap[N
   lazy val numEdges:Int = {
     toEdges.foldLeft(0)(_ + _._2.size)
   }
+
+  def out(out:java.io.PrintWriter){
+    val nl = nodes.toList
+    nl.map{n=>
+      out.print(n+" ")
+      out.println(toEdges(n).map(_._1).mkString(" "))
+    }
+    out.println("End network")
+  }
 }
 
 object NetworkMeasures {
