@@ -123,7 +123,7 @@ object NetworkMeasures {
           pls.toList ++ bfs(nqueue,nvis)
       }
     }
-    val nds = bfs(List((node,0)),Set[N]())
+    val nds = bfs(List((node,0)),Set(node))
     (nds.foldLeft(0)(_+_._2),nds.size)
   }
 
