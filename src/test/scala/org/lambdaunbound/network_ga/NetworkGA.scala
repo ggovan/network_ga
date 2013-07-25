@@ -260,6 +260,15 @@ class ExampleSpec extends FunSpec {
       val actual = NetworkMeasures.averagePathLength(net)
       assert(actual===expected)
     }
+    it("should work for cyclic graphs"){
+      var net = empty.addNodes(List(0,1,2,3))
+      net = net.addEdge(0,1,1)
+      net = net.addEdge(1,2,1)
+      net = net.addEdge(2,1,1)
+      val expected = 4/3.0
+      val actual = NetworkMeasures.averagePathLength(net)
+      assert(actual===expected)
+    }
     it("should be 0 for a network with no connections"){
       val net = empty.addNodes(0 until 10 toList)
       val pl = NetworkMeasures.averagePathLength(net)
