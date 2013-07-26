@@ -126,6 +126,15 @@ class ExampleSpec extends FunSpec {
       val sg = ob(gene)
       assert(sg===ScoredGene(7,List(1.0,21.0),0))
     }
+    it("should be composable with functions requiring a lower type"){
+      val objs:Objectives[HasNet] = Objectives(List({x:HasNet=>1.0}))
+      val objsG:Objectives[Gene] = objs&&({x:Gene=>1.0})
+    }
+    it("should be composable with functions requiring a higher type"){
+      val objs:Objectives[Gene] = Objectives(List({x:Gene=>1.0}))
+      val objsHN:Objectives[Gene] = objs&&({x:HasNet=>1.0})
+    }
+
   }
   describe("A ScoredGene"){
     it("should dominate a gene with worse objective performance"){

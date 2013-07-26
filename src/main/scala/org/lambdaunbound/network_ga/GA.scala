@@ -1,9 +1,9 @@
 package org.lambdaunbound.network_ga
 
-case class Objectives[G](obs:List[G=>Double]) {
-    def apply(gene:G):ScoredGene[G] = ScoredGene(gene,obs.map(_(gene)),0)
-    def all(genes:List[G]):List[ScoredGene[G]] = genes.par.map(apply(_)).toList
-    def &&(f:G=>Double):Objectives[G] = Objectives(obs++List(f))
+case class Objectives[-G](obs:List[G=>Double]) {
+    def apply[B<:G](gene:B):ScoredGene[B] = ScoredGene(gene,obs.map(_(gene)),0)
+    def all[B<:G](genes:List[B]):List[ScoredGene[B]] = genes.par.map(apply(_)).toList
+    def &&[C<:G](f:C=>Double):Objectives[C] = Objectives(obs++List(f))
 }
 
 case class ScoredGene[G](gene:G,scores:List[Double],doms:Int){
