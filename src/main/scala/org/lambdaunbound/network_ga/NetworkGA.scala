@@ -1,7 +1,16 @@
 package org.lambdaunbound.network_ga
 
-case class Gene(net:Network[Int,Int],mutationRate:Double) extends Mutatable[Gene] with HasNet {
-  //TODO: Add parent to the Gene (or parents)
+case class Gene(
+  net:Network[Int,Int],
+  mutationRate:Double,
+  parent:Option[String]=None,
+  id:String="0:0")
+  extends Mutatable[Gene] with HasNet {
+
+  //TODO: Ugly hacks! Mutable data! Fix it, fix it fix it!
+  val gen = parent.map(_.takeWhile(_ != ':').toInt).getOrElse(-1)+1
+  var children = -1
+
   import java.util.Random
   type IntNet = Network[Int,Int]
 
@@ -9,7 +18,8 @@ case class Gene(net:Network[Int,Int],mutationRate:Double) extends Mutatable[Gene
     logger.debug("Mutating Gene")
     val mutNet = mutateNetwork(rnd)
     val mutR = mutateRate(rnd)
-    Gene(mutNet,mutR)
+    children+=1
+    Gene(mutNet,mutR,Some(id),gen+":"+children)
   }
 
   def mutateNetwork(rnd:Random):IntNet = {
@@ -34,9 +44,24 @@ case class Gene(net:Network[Int,Int],mutationRate:Double) extends Mutatable[Gene
 
   def mutateRate(rnd:Random):Double = if(rnd.nextDouble()<scala.math.sqrt(mutationRate))rnd.nextDouble() else mutationRate
 
+  override def toString:String = {
+    "NetworkGene:"+id+"\n"+
+    "Parent:"+parent.getOrElse("")+"\n" 
+  }
+
 }
 
-case class MultiMutateNetworkGene(net:Network[Int,Int],mutRates:Seq[Double])extends Mutatable[MultiMutateNetworkGene] with HasNet{
+case class MultiMutateNetworkGene(
+  net:Network[Int,Int],
+  mutRates:Seq[Double],
+  parent:Option[String],
+  id:String="0:0")
+  extends Mutatable[MultiMutateNetworkGene] with HasNet{
+
+  //TODO: Fix as above
+  val gen = parent.map(_.takeWhile(_ != ':').toInt).getOrElse(-1)+1
+  var children = -1
+
   import java.util.Random
   type IntNet = Network[Int,Int]
 
@@ -44,7 +69,8 @@ case class MultiMutateNetworkGene(net:Network[Int,Int],mutRates:Seq[Double])exte
     logger.debug("Mutating MMNGene")
     val mutNet = mutateNetwork(rnd)
     val mutRs = mutateRates(rnd)
-    MultiMutateNetworkGene(mutNet,mutRs)
+    children+=1
+    MultiMutateNetworkGene(mutNet,mutRs,Some(id),gen+":"+children)
   }
 
   def mutateNetwork(rnd:Random):Network[Int,Int] = {
@@ -86,7 +112,7 @@ object NetworkGA {
 
   def main(args:Array[String]){
     //process input
-    logger.info("Starting Network_GA");
+    logger.info("Starting Network_GA")
     val popSize = args(0).toInt
     val gens = args(1).toInt
     val output = args(2)
@@ -103,6 +129,7 @@ object NetworkGA {
 
     val rnd = new Random(0)
     val out = new PrintWriter(output)
+    outing = Some(new PrintWriter(output+".complete"))
 
     //set up initial pop
 
@@ -110,13 +137,13 @@ object NetworkGA {
     val startNet = emptyNet.addNodes(0 until nodes toList)
     val startMutRate = 0.01
     val startMRL = (0 until nodes).map(_=>startMutRate)
-    val tmpGene = MultiMutateNetworkGene(startNet,startMRL).mutate(rnd)
-    val startGene = MultiMutateNetworkGene(tmpGene.net,startMRL)
-
+    val tmpGene = MultiMutateNetworkGene(startNet,startMRL,None).mutate(rnd)
+//    val startGene = MultiMutateNetworkGene(tmpGene.net,startMRL,None)
+    val startGene = Gene(tmpGene.net,startMutRate,None)
 
     val pop = Population(objs.all((List(startGene))))
 
-    def eogf(gen:Int,pop:Population[MultiMutateNetworkGene]){
+    def eogf(gen:Int,pop:Population[Gene]){
       println("End of Generation " + (gen+1)+", Pop size " + pop.pop.length)
       val p = pop.pop.map(sg=>sg.doms+" "+sg.scores.mkString(" ")/*+" "+sg.gene.mutationRate*/).mkString("\n")
       println(p)
@@ -133,22 +160,28 @@ object NetworkGA {
     using(out){out=>
       outPop.pop.map(_.gene.net.out(out))
     }
+    outing.map(_.close)
   }
+
+  var outing:Option[PrintWriter] = None
 
   def evo[G<:Mutatable[G],B>:G](noGen:Int,popSize:Int,objs:Objectives[B],rnd:Random,startPop:Population[G],endOfGenFunction:Option[(Int,Population[G])=>Unit]=None):Population[G] = {
     def generation(gen:Int,pop:Population[G]):Population[G] = {
       if(gen==noGen) pop
       else {
-        logger.debug("Evolving generation {}",gen+1);
+        logger.info("Evolving generation {}",gen+1)
+        outing.map(_.println("GENERATION:"+gen+1))
         val genPop = pop.createPop(rnd).take(popSize).toList
-        logger.debug("Evaluating and sorting generation {}",gen+1);
-        val paretoOrdered = pop.++(objs.all(genPop)).paretoOrdered
+        logger.debug("Evaluating and sorting generation {}",gen+1)
+        val scoredPop = objs.all(genPop)
+        outing.map(o => scoredPop.foreach(o.print(_)))
+        val paretoOrdered = pop.++(scoredPop).paretoOrdered
         val undominated = paretoOrdered.filter(_.doms==0)
         val nextPop = if(undominated.length>popSize)
             undominated
           else
             paretoOrdered.take(popSize)
-        logger.debug("Call end of gen function with generation {}",gen+1);
+        logger.debug("Call end of gen function with generation {}",gen+1)
         endOfGenFunction.map(_(gen,Population(nextPop)))
         generation(gen+1,Population(nextPop))
       }
