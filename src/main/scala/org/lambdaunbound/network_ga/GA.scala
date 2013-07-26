@@ -23,6 +23,12 @@ case class ScoredGene[G](gene:G,scores:List[Double],doms:Int){
   }
 
   lazy val clearDominated = if(doms!=0)ScoredGene(gene,scores,0)else this
+
+  override def toString:String = {
+    "ScoredGene\n"+
+    scores.mkString("\t")+"\t:"+doms+"\n"+
+    gene + "\n"
+  }
 }
 
 trait Mutatable[G] {

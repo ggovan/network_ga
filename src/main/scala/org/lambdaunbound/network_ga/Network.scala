@@ -84,6 +84,12 @@ case class Network[N,E](nodes:Set[N],toEdges:Map[N,Map[N,E]],fromEdges:EdgeMap[N
     out.println("End network")
   }
 
+  override def toString:String = {
+    nodesList.map{n=>
+      n+" "+ toEdges(n).map(_._1).mkString(" ")
+    }.mkString("\n")
+  }
+
   lazy val nodesList = nodes.toList
 }
 
