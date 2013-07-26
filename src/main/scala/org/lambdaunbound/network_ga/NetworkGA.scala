@@ -1,6 +1,6 @@
 package org.lambdaunbound.network_ga
 
-case class Gene(net:Network[Int,Int],mutationRate:Double) extends Mutatable[Gene] {
+case class Gene(net:Network[Int,Int],mutationRate:Double) extends Mutatable[Gene] with HasNet {
   //TODO: Add parent to the Gene (or parents)
   import java.util.Random
   type IntNet = Network[Int,Int]
@@ -36,7 +36,7 @@ case class Gene(net:Network[Int,Int],mutationRate:Double) extends Mutatable[Gene
 
 }
 
-case class MultiMutateNetworkGene(net:Network[Int,Int],mutRates:Seq[Double])extends Mutatable[MultiMutateNetworkGene]{
+case class MultiMutateNetworkGene(net:Network[Int,Int],mutRates:Seq[Double])extends Mutatable[MultiMutateNetworkGene] with HasNet{
   import java.util.Random
   type IntNet = Network[Int,Int]
 
@@ -73,6 +73,10 @@ case class MultiMutateNetworkGene(net:Network[Int,Int],mutRates:Seq[Double])exte
   def mutateRates(rnd:Random):Seq[Double] = mutRates.map(mr=>if(rnd.nextDouble()<scala.math.sqrt(mr))rnd.nextDouble() else mr)
 }
 
+trait HasNet {
+  def net:Network[Int,Int]
+}
+
 
 object NetworkGA {
   type IntNet = Network[Int,Int]
@@ -91,9 +95,9 @@ object NetworkGA {
     val cluster = args(5).toDouble
     val nodes = args(6).toInt
 
-    val f1 = {g:Gene=> (NM.averageDegree(g.net)-degree).abs}
-    val f2 = {g:Gene=> (NM.averagePathLength(g.net)-pathLength).abs}
-    val f3 = {g:Gene=> (NM.averageClusteringCoefficient(g.net)-cluster).abs}
+    val f1 = {g:HasNet=> (NM.averageDegree(g.net)-degree).abs}
+    val f2 = {g:HasNet=> (NM.averagePathLength(g.net)-pathLength).abs}
+    val f3 = {g:HasNet=> (NM.averageClusteringCoefficient(g.net)-cluster).abs}
 
     val objs = Objectives(List(f1,f2,f3))
 
@@ -105,15 +109,16 @@ object NetworkGA {
     val emptyNet = Network.create[Int,Int]
     val startNet = emptyNet.addNodes(0 until nodes toList)
     val startMutRate = 0.01
-    val tmpGene = Gene(startNet,startMutRate).mutate(rnd)
-    val startGene = Gene(tmpGene.net,startMutRate)
+    val startMRL = (0 until nodes).map(_=>startMutRate)
+    val tmpGene = MultiMutateNetworkGene(startNet,startMRL).mutate(rnd)
+    val startGene = MultiMutateNetworkGene(tmpGene.net,startMRL)
 
 
-    val pop = Population[Gene](objs.all((List(startGene))))
+    val pop = Population(objs.all((List(startGene))))
 
-    def eogf(gen:Int,pop:Population[Gene]){
+    def eogf(gen:Int,pop:Population[MultiMutateNetworkGene]){
       println("End of Generation " + (gen+1)+", Pop size " + pop.pop.length)
-      val p = pop.pop.map(sg=>sg.doms+" "+sg.scores.mkString(" ")+" "+sg.gene.mutationRate).mkString("\n")
+      val p = pop.pop.map(sg=>sg.doms+" "+sg.scores.mkString(" ")/*+" "+sg.gene.mutationRate*/).mkString("\n")
       println(p)
     }
 
@@ -130,7 +135,7 @@ object NetworkGA {
     }
   }
 
-  def evo[G<:Mutatable[G]](noGen:Int,popSize:Int,objs:Objectives[G],rnd:Random,startPop:Population[G],endOfGenFunction:Option[(Int,Population[G])=>Unit]=None):Population[G] = {
+  def evo[G<:Mutatable[G],B>:G](noGen:Int,popSize:Int,objs:Objectives[B],rnd:Random,startPop:Population[G],endOfGenFunction:Option[(Int,Population[G])=>Unit]=None):Population[G] = {
     def generation(gen:Int,pop:Population[G]):Population[G] = {
       if(gen==noGen) pop
       else {

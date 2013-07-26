@@ -22,7 +22,7 @@ case class ScoredGene[G](gene:G,scores:List[Double],doms:Int){
         countDominated(gs)
   }
 
-  lazy val clearDominated = ScoredGene(gene,scores,0)
+  lazy val clearDominated = if(doms!=0)ScoredGene(gene,scores,0)else this
 }
 
 trait Mutatable[G] {
