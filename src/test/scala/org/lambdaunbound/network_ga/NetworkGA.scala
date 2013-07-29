@@ -94,6 +94,16 @@ class ExampleSpec extends FunSpec {
       assert(net.numEdges === 12)
     }
 
+    it("should have an accurate edge list"){
+      var net = empty.addNodes(List(0,1,2,3))
+      net = net.addEdge(0,1,1)
+      net = net.addEdge(1,2,1)
+      net = net.addEdge(2,1,1)
+      net = net.addEdge(3,0,1)
+      var expected = List((0,1),(1,2),(2,1),(3,0))
+      assert(net.edgeList===expected)
+    }
+
   }
 
   describe("A Gene"){

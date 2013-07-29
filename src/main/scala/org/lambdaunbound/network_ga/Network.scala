@@ -10,10 +10,7 @@ case class Network[N,E](nodes:Set[N],toEdges:Map[N,Map[N,E]],fromEdges:EdgeMap[N
     Network(nodes+node,toEdges+((node,Map())),fromEdges+((node,Map())))
   }
 
-  def addNodes(newNodes:List[N]):Network[N,E] = newNodes match {
-    case Nil => this
-    case n::ns => addNode(n).addNodes(ns)
-  }
+  def addNodes(newNodes:List[N]) = newNodes.foldLeft(this)(_.addNode(_))
 
   def removeNode(node:N):Network[N,E] = {
     def removeNodeFrom(edges:EdgeMap[N,E]):EdgeMap[N,E] = {
@@ -91,6 +88,9 @@ case class Network[N,E](nodes:Set[N],toEdges:Map[N,Map[N,E]],fromEdges:EdgeMap[N
   }
 
   lazy val nodesList = nodes.toList
+
+  lazy val edgeList:List[(N,N)] = toEdges.map{case (n1,m)=> m.map{case (n2,e)=> (n1,n2) }}.flatten.toList
+
 }
 
 object NetworkMeasures {
