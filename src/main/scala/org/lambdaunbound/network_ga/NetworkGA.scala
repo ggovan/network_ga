@@ -16,13 +16,13 @@ case class Gene(
 
   def mutate(rnd:Random):Gene = {
     logger.debug("Mutating Gene")
-    val mutNet = mutateNetwork(rnd)
     val mutR = mutateRate(rnd)
+    val mutNet = mutateNetwork(rnd,mutR)
     children+=1
     Gene(mutNet,mutR,Some(id),gen+":"+children)
   }
 
-  def mutateNetwork(rnd:Random):IntNet = {
+  def mutateNetwork(rnd:Random,mutR:Double):IntNet = {
     val allNodes = (0 until net.nodes.size).toList
 
     def mutateNet(nodes:List[Int],net:IntNet,rnd:Random):IntNet = nodes match{
@@ -32,7 +32,7 @@ case class Gene(
     def mutateNode(nodes:List[Int],node:Int,net:IntNet,rnd:Random):IntNet = nodes match {
       case Nil => net
       case n::ns if(n==node) => mutateNode(ns,node,net,rnd)
-      case n::ns if(rnd.nextDouble()<mutationRate) => {
+      case n::ns if(rnd.nextDouble()<mutR) => {
         val newNet = if(net.getEdge(node,n)==None)net.addEdge(node,n,1) else net.removeEdge(node,n)
         mutateNode(ns,node,newNet,rnd)
       }
@@ -40,6 +40,28 @@ case class Gene(
     }
 
     mutateNet(allNodes,net,rnd)
+  }
+
+  def rewireNetwork(rnd:Random,mutR:Double):IntNet = {
+    def rewireEdge(current:(Int,Int),net:IntNet):IntNet = {
+      val nn1 = rnd.nextInt(net.nodes.size)
+      val nn2 = rnd.nextInt(net.nodes.size)
+      if(nn1==nn2 || net.getEdge(nn1,nn2)!=None)
+        rewireEdge(current,net)
+      else
+        net.removeEdge(current._1,current._2).addEdge(nn1,nn2,1)
+    }
+    def rewire(edges:List[(Int,Int)],net:IntNet):IntNet = edges match {
+      case Nil => net
+      case (n1,n2)::ns => if(rnd.nextDouble() < mutR) {
+        val newNet = rewireEdge((n1,n2),net)
+        rewire(ns,newNet)
+      }
+      else{
+        rewire(ns,net)
+      }
+    }
+    rewire(net.edgeList,net)
   }
 
   def mutateRate(rnd:Random):Double = if(rnd.nextDouble()<scala.math.sqrt(mutationRate))rnd.nextDouble() else mutationRate
@@ -135,11 +157,14 @@ object NetworkGA {
 
     val emptyNet = Network.create[Int,Int]
     val startNet = emptyNet.addNodes(0 until nodes toList)
+    val erMR = (degree)/((nodes-1).toDouble)
+    println(erMR)
     val startMutRate = 0.01
     val startMRL = (0 until nodes).map(_=>startMutRate)
+    val tmpNet = Gene(startNet,erMR,None).mutateNetwork(rnd,erMR)
     val tmpGene = MultiMutateNetworkGene(startNet,startMRL,None).mutate(rnd)
 //    val startGene = MultiMutateNetworkGene(tmpGene.net,startMRL,None)
-    val startGene = Gene(tmpGene.net,startMutRate,None)
+    val startGene = Gene(tmpNet,startMutRate,None)
 
     val pop = Population(objs.all((List(startGene))))
 
