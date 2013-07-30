@@ -26,7 +26,7 @@ case class ScoredGene[G](gene:G,scores:List[Double],doms:Int){
 
   override def toString:String = {
     "ScoredGene\n"+
-    scores.mkString("\t")+"\t:"+doms+"\n"+
+    scores.mkString("\t")+"\tdoms:"+doms+"\n"+
     gene + "\n"
   }
 }

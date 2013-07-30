@@ -10,7 +10,7 @@ case class Network[N,E](nodes:Set[N],toEdges:Map[N,Map[N,E]],fromEdges:EdgeMap[N
     Network(nodes+node,toEdges+((node,Map())),fromEdges+((node,Map())))
   }
 
-  def addNodes(newNodes:List[N]) = newNodes.foldLeft(this)(_.addNode(_))
+  def addNodes(newNodes:Seq[N]) = newNodes.foldLeft(this)(_.addNode(_))
 
   def removeNode(node:N):Network[N,E] = {
     def removeNodeFrom(edges:EdgeMap[N,E]):EdgeMap[N,E] = {

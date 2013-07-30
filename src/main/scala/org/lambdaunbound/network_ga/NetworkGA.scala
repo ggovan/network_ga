@@ -1,4 +1,5 @@
 package org.lambdaunbound.network_ga
+import java.util.Random
 
 case class Gene(
   net:Network[Int,Int],
@@ -164,11 +165,13 @@ object NetworkGA {
     val tmpNet = Gene(startNet,erMR,None).mutateNetwork(rnd,erMR)
     val tmpGene = MultiMutateNetworkGene(startNet,startMRL,None).mutate(rnd)
 //    val startGene = MultiMutateNetworkGene(tmpGene.net,startMRL,None)
-    val startGene = Gene(tmpNet,startMutRate,None)
+//    val startGene = Gene(tmpNet,startMutRate,None)
+
+    val startGene = TwoProbModelGene(nodes,2.0,1.0,0.05,1.0,rnd)
 
     val pop = Population(objs.all((List(startGene))))
 
-    def eogf(gen:Int,pop:Population[Gene]){
+    def eogf(gen:Int,pop:Population[TwoProbModelGene]){
       println("End of Generation " + (gen+1)+", Pop size " + pop.pop.length)
       val p = pop.pop.map(sg=>sg.doms+" "+sg.scores.mkString(" ")/*+" "+sg.gene.mutationRate*/).mkString("\n")
       println(p)
@@ -183,7 +186,10 @@ object NetworkGA {
 
     logger.info("Writing out final population")
     using(out){out=>
-      outPop.pop.map(_.gene.net.out(out))
+      outPop.pop.map{sg=>
+        out.println(sg)
+        sg.gene.net.out(out)
+      }
     }
     outing.map(_.close)
   }
@@ -195,7 +201,7 @@ object NetworkGA {
       if(gen==noGen) pop
       else {
         logger.info("Evolving generation {}",gen+1)
-        outing.map(_.println("GENERATION:"+gen+1))
+        outing.map(_.println("GENERATION:"+(gen+1)))
         val genPop = pop.createPop(rnd).take(popSize).toList
         logger.debug("Evaluating and sorting generation {}",gen+1)
         val scoredPop = objs.all(genPop)
@@ -218,4 +224,58 @@ object NetworkGA {
 
 }
 
+/**
+ * Connections between nodes are based upon distance, and also a lesser uniform probability.
+ * This is based upon Sporns and Zwi (2004) The Small World of the Cerebral Cortex - doi:10.1385/NI:2:2:145
+ *
+ */
 
+case class TwoProbModelGene(nodeNum:Int,sd:Double,pMsd:Double,uniformP:Double,pMuniform:Double,rnd:Random) extends HasNet with Mutatable[TwoProbModelGene] {
+
+  type IntNet = Network[Int,Int]
+
+  lazy val normalDistribution = new org.apache.commons.math3.distribution.NormalDistribution(0,sd)
+
+  lazy val net:IntNet = {
+    val empty = Network.create[Int,Int].addNodes(0 until nodeNum)
+    val nodes = empty.nodesList
+    nodes.foldLeft(empty){(net,node)=>
+      nodes.foldLeft(net){(net,node2)=>
+        if(node==node2)
+          net
+        else{
+          val dist = {
+            val max = math.max(node,node2)
+            val min = math.min(node,node2)
+            math.min(max-min,min+nodeNum-max)
+          }
+          val r = rnd.nextDouble()
+          val connect = r<uniformP || r<((1-normalDistribution.cumulativeProbability(dist))*2)
+          if(connect){
+            net.addEdge(node,node2,1)
+          }
+          else
+            net
+        }
+      }
+    }
+  }
+
+  def mutate(r:Random):TwoProbModelGene = {
+    val npMsd = if(r.nextDouble < pMsd) r.nextDouble else pMsd
+    val npMuniform = if(r.nextDouble < pMuniform) r.nextDouble else pMuniform
+    val nsd = if(r.nextDouble<npMsd) r.nextDouble*7 else sd
+    val nuniform = if(r.nextDouble()<npMuniform) r.nextDouble/10 else uniformP
+    //val nsd = (r.nextGaussian()*npMsd + sd).abs
+    //val nuniform = math.max(0.5,(r.nextGaussian()*npMuniform + uniformP).abs)
+    if(nsd==sd && nuniform == uniformP)
+      mutate(r)
+    else
+      TwoProbModelGene(nodeNum,nsd,npMsd,nuniform,npMuniform,rnd)
+  }
+
+  override def toString:String = {
+    "TwoProbModel\n"+
+    "sd:" + sd + ",pMsd:" + pMsd + ",uniformp:"+uniformP+",pMuniform:"+pMuniform+"\n"
+  }
+}
