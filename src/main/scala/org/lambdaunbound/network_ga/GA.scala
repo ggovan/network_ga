@@ -78,16 +78,21 @@ case class Population[G<:Mutatable[G]](pop:List[ScoredGene[G]]){
         (v-min)/(max-min)
       },sg)
     }
-    val distancedList:List[(Double,ScoredGene[G])] = for{g1 <- normalisedList
+    val distancesList:List[(Double,ScoredGene[G])] = for{g1 <- normalisedList
       g2 <- normalisedList
       val td = g1._1.zip(g2._1).map(x=>math.pow(x._1-x._2,2)).reduce(_+_)
       val dist = math.sqrt(td)
       if(dist!=0)
     } yield (dist,g1._2)
 
+    val distancedList = distancesList.groupBy(_._2).toList.map{case (g,ldg) =>
+      (ldg.map(_._1).sum,g)
+    }
+
     val sortedDistancedList = distancedList.sortBy(_._1)
     val indexes = 1 to sortedDistancedList.size
     val total = indexes.sum.toDouble
+    
     sortedDistancedList.zip(indexes).map{case ((d,sg),i) => (i/total,sg)}
   }
 
