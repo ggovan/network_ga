@@ -58,18 +58,43 @@ case class Population[G<:Mutatable[G]](pop:List[ScoredGene[G]]){
     paretoOrdered.map(sg=>((maxD-sg.doms)/total,sg))
   }
 
-  def dominanceTournamentSelect(rnd:Random):G = {
-    def tselect(p:Double,l:List[(Double,ScoredGene[G])]):G = l match {
-      case Nil => throw new AssertionError("The % of all items is less than 1.")
-      case (q,g)::ls =>
-        if(p<q) g.gene
-        else tselect(p-q,ls)
-    }
-    tselect(rnd.nextDouble,dominanceTournametList)
+  def dominanceTournamentSelect(rnd:Random):G = tournamentSelect(rnd.nextDouble,dominanceTournametList)
+
+  def tournamentSelect(p:Double,l:List[(Double,ScoredGene[G])]):G = l match {
+    case Nil => throw new AssertionError("The % of all items is less than 1.")
+    case (q,g)::ls =>
+      if(p<q) g.gene
+      else tournamentSelect(p-q,ls)
   }
 
+  lazy val crowdedProbabiltyList:List[(Double,ScoredGene[G])] = {
+    val list = paretoOrdered
+    val starting:List[(Double,Double)] = list.head.scores.map(x=>(x,x))
+    val minMaxList:List[(Double,Double)] = list.foldLeft(starting){(mm,sg) =>
+      sg.scores.zip(mm).map{case (v,(min,max)) => (math.min(v,min),math.max(v,max))}
+    }
+    val normalisedList:List[(List[Double],ScoredGene[G])] = list.map{sg =>
+      (sg.scores.zip(minMaxList).map{case (v,(min,max)) =>
+        (v-min)/(max-min)
+      },sg)
+    }
+    val distancedList:List[(Double,ScoredGene[G])] = for{g1 <- normalisedList
+      g2 <- normalisedList
+      val td = g1._1.zip(g2._1).map(x=>math.pow(x._1-x._2,2)).reduce(_+_)
+      val dist = math.sqrt(td)
+      if(dist!=0)
+    } yield (dist,g1._2)
+
+    val sortedDistancedList = distancedList.sortBy(_._1)
+    val indexes = 1 to sortedDistancedList.size
+    val total = indexes.sum.toDouble
+    sortedDistancedList.zip(indexes).map{case ((d,sg),i) => (i/total,sg)}
+  }
+
+  def crowdingSelecter(rnd:Random):G = tournamentSelect(rnd.nextDouble,crowdedProbabiltyList)
+
   def createPop(rnd:java.util.Random):Stream[G] = {
-    val selected:G = dominanceTournamentSelect(rnd)
+    val selected:G = crowdingSelecter(rnd)
     val g = selected.mutate(rnd)
     g#::createPop(rnd)
   }
