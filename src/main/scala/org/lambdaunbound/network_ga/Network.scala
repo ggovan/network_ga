@@ -129,21 +129,25 @@ object NetworkMeasures {
 
   def nodePathLength[N,E](net:Network[N,E],node:N):(Int,Int) = {
     require(net.contains(node))
-    def bfs(queue:Seq[(N,Int)],visited:Set[N]):Iterable[(N,Int)] = queue.headOption match {
-      case None => Nil
-      case Some(n) => {
-        val neighbours = net.getNeighbours(n._1)--visited
-        val nvis = visited++neighbours
-        val pls = neighbours.map((_,n._2+1))
-        val nqueue = queue.tail++pls
-        if(visited.size==net.nodes.size)
-          pls.toList
-        else
-          pls.toList ++ bfs(nqueue,nvis)
+    val queue:java.util.Queue[(N,Int)] = new java.util.LinkedList()
+    queue.add((node,0))
+    val visited:java.util.Set[N] = new java.util.HashSet()
+    visited.add(node)
+    var totalD = 0
+    while(visited.size!=net.nodes.size && queue.peek!=null){
+      val n = queue.poll
+      val neighbours = new java.util.HashSet[N]()
+      net.getNeighbours(n._1).foreach(neighbours.add(_))
+      neighbours.removeAll(visited)
+      visited.addAll(neighbours)
+      totalD += neighbours.size*(n._2+1)
+      val iter = neighbours.iterator
+      while(iter.hasNext){
+        val no = iter.next
+        queue.add((no,n._2+1))
       }
     }
-    val nds = bfs(List((node,0)),Set(node))
-    (nds.foldLeft(0)(_+_._2),nds.size)
+    (totalD,visited.size-1)
   }
 
   def averagePathLength[N,E](net:Network[N,E]):Double = {
